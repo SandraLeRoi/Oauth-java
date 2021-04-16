@@ -16,6 +16,13 @@ public class Auth {
     private String clientSecret = "3d0c0329-a993-4bd5-a902-a947a79092b5";
     private String redirectUri = "http://localhost:8888";
 
+    private HttpClient client;
+    private HttpServer server;
+
+    public Auth() {
+        client = HttpClient.newHttpClient();
+    }
+
     public void openAuthorizationPage() {
         String url="https://auth.dunarr.com/auth/realms/hoc/protocol/openid-connect/auth?client_id=%s&response_type=code&redirect_uri=%s";
         String finalUrl = String.format(url, clientId, redirectUri);
@@ -29,7 +36,7 @@ public class Auth {
 
     public void runHttpServer() {
         try {
-            HttpServer server = HttpServer.create(new InetSocketAddress("localhost",8888),0);
+            server = HttpServer.create(new InetSocketAddress("localhost",8888),0);
             server.createContext("/", new MyHandler(this));
             server.start();
         } catch (IOException e){
@@ -38,12 +45,12 @@ public class Auth {
     }
 
     public void sendAuthCode(String code) {
+        server.stop(0);
         String url = "https://auth.dunarr.com/auth/realms/hoc/protocol/openid-connect/token";
         String parameters = "client_id=%s&client_secret=%s&grant_type=authorization_code&redirect_uri=%s&code=%s";
         String finalParameters = String.format(parameters,clientId, clientSecret,redirectUri, code);
 
         try{
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .POST(HttpRequest.BodyPublishers.ofString(finalParameters))
                     .uri(new URI(url))
@@ -55,10 +62,28 @@ public class Auth {
             System.out.println(content);
             JSONObject data = (JSONObject) JSONValue.parse(content);
             String accessToken = (String) data.get("access_token");
+            String refreshToken = (String) data.get("refresh_token");
             System.out.println(accessToken);
+            callApi(accessToken);
         } catch (URISyntaxException | IOException | InterruptedException e){
             System.out.println(e);
         }
 
+    }
+
+    public void callApi(String accessToken) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .GET()
+                    .uri(new URI("https://auth.dunarr.com/auth/realms/hoc/protocol/openid-connect/userinfo"))
+                    .header("Accept","application/json")
+                    .header("Authorization","Bearer "+accessToken)
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            JSONObject data = (JSONObject) JSONValue.parse(response.body());
+            System.out.println(data);
+        } catch (URISyntaxException | IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

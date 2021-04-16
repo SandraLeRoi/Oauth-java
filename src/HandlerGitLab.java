@@ -6,24 +6,22 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
-public class MyHandler implements HttpHandler {
+public class HandlerGitLab implements HttpHandler {
+    private AuthGitLab auth;
 
-    private Auth auth;
-
-    public MyHandler(Auth auth) {
-        this.auth = auth;
+    public HandlerGitLab(AuthGitLab authGitLab) {
+        this.auth = authGitLab;
     }
 
-    @Override
     public void handle(HttpExchange exchange) throws IOException {
         System.out.println("User connected !!!!!!!!!");
         OutputStream response = exchange.getResponseBody();
-        String message = "<script>window.close();</script>";
+        String message = "coucou";
         exchange.sendResponseHeaders(200, message.length());
         response.write(message.getBytes(StandardCharsets.UTF_8));
         response.flush();
         HashMap<String, String> params = parseQueryParams(exchange.getRequestURI().toString());
-        System.out.println(params);
+//        System.out.println(params);
         if (params.containsKey("code")) {
             auth.sendAuthCode(params.get("code"));
         }
